@@ -10,14 +10,41 @@ const app = express()
 const httpServer = http.createServer(app)
 const io = new Server(httpServer)
 
+io.on("connection", (client)=>{
+    if(!client.handshake.query.user){
+        client.disconnect()
+    }else{
+        client.join(client.handshake.query.user)
+    }
+})
+
 app.use(express.json())
 app.use(cors())
 
-app.get("/", (req, res)=>{
-    return res.send("Hello from server")
+//Example of event creation by REST
+app.post("/ping", (req, res)=>{
+    if(!req.body.user){
+        return res.status(400).json({status: "err", msg: "No user provided"})
+    }
+    sendPersonal(req.body.user, "pong", "pong")
+    res.writeHead(201, {
+        'Location': '/ping'
+    });
+    return res.end('');
+})
+//End
+
+//Block area
+app.all("/*", (req, res)=>{
+    return res.status(400).send("method not found")
 })
 
 httpServer.listen(process.env.PORT, ()=>{
     console.log("Server was started")
 })
+
+
+function sendPersonal(user, event, msg){
+    io.to(user).emit(event, {payload: msg})
+}
 
